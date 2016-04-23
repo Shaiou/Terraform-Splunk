@@ -33,7 +33,7 @@ variable  "indexer_volume_size"             { default = "50" }
 variable  "mgmtHostPort"                    { default = 8089 }
 variable  "pass4SymmKey"                    {}
 variable  "replication_factor"              { default = 2 }
-variable  "replication_port"                { default = 2 }
+variable  "replication_port"                { default = 9887 }
 variable  "search_factor"                   { default = 2 }
 variable  "user"                            { default = "splunk" }
 variable  "group"                           { default = "splunk" }
