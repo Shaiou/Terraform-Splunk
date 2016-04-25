@@ -1,6 +1,9 @@
 ## AWS Specific part
 variable  "ami"                             {}
+variable  "instance_user"                   {}
 variable  "key_name"                        {}
+variable  "package_manager"                 {}
+
 variable  "region"                          {}
 variable  "pretty_name"                     { default = "splunk" }
 variable  "vpc_id"                          {}
@@ -14,10 +17,8 @@ variable  "admin_cidr_block"                {}
 ## Instance/elb/asg specs
 variable  "instance_type_indexer"           {}
 variable  "instance_type_deploymentserver"  {}
-variable  "instance_type_heavyforwarder"    {}
 variable  "instance_type_master"            {}
 variable  "instance_type_searchhead"        {}
-variable  "instance_user"                   {}
 variable  "count_searchhead"                { default = 2 }
 #Min will be based on replication factor
 variable  "asg_indexer_desired"             { default = 2 }

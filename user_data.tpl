@@ -6,7 +6,7 @@ exec 1> /var/tmp/mylog 2>&1
 useradd -b /home -c "Splunk dedicated user" --user-group --create-home -s "/bin/bash" ${user}
 
 # Download/extract package
-apt-get install -y awscli
+${package_manager} install -y awscli
 aws s3 cp ${s3_url} /tmp --region ${region}
 cd ${basedir}
 tar -zxvf /tmp/${package}

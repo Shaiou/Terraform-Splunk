@@ -144,14 +144,14 @@ resource "template_file" "deploymentclient_conf" {
 resource "template_file" "user_data_template" {
     template    = "${file("${path.module}/user_data.tpl")}"
     vars    {
-        user              =  "${var.user}"
-        group             =  "${var.group}"
-        region            =  "${var.region}"
-        s3_url            =  "s3://${var.s3_bucket}/${var.s3_path}/${var.package}"
-        package           =  "${var.package}"
-        basedir           =  "${var.basedir}"
-        splunk_dir        =  "${var.basedir}/splunk"
-        web_conf_content  =  "${template_file.web_conf.rendered}"
+        user              = "${var.user}"
+        group             = "${var.group}"
+        region            = "${var.region}"
+        s3_url            = "s3://${var.s3_bucket}/${var.s3_path}/${var.package}"
+        package           = "${var.package}"
+        basedir           = "${var.basedir}"
+        splunk_dir        = "${var.basedir}/splunk"
+        web_conf_content  = "${template_file.web_conf.rendered}"
     }
 }
 

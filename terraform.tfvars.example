@@ -1,0 +1,34 @@
+## AWS Specific part
+ami                             = "ami-f95ef58a"
+# Instance user: pick between ec2-user and ubuntu depending on your ami
+instance_user                   = "ubuntu"
+key_name                        = "mykey"
+# Package manager: pick between apt and yum
+package_manager                 = "apt"
+
+region                          = "eu-west-1"
+vpc_id                          = "vpc-1234"
+#AZ lists and subnets must be comma separated lists in the same order ( subnet 1 must be in AZ 1)
+availability_zones              = "eu-west-1a,eu-west-1b,eu-west-1c"
+subnets                         = "subnet-45,subnet-56,subnet-67"
+#admin cidr for ssh and web access
+admin_cidr_block                = "8.8.8.8/32"
+
+## Instance/elb/asg specs
+instance_type_indexer           = "t2.micro"
+instance_type_deploymentserver  = "t2.micro"
+instance_type_master            = "t2.micro"
+instance_type_searchhead        = "t2.micro"
+
+# Min will be based on replication factor
+asg_indexer_desired             = 3
+asg_indexer_max                 = 4
+
+## Splunk Package Info
+s3_bucket                       = "mybucket"
+# Path inside the bucket: DO NOT START OR END WITH A "/"
+s3_path                         = "splunk"
+package                         = "splunk-6.4.0-f2c836328108-Linux-x86_64.tgz"
+
+## Splunk Settings
+pass4SymmKey                    = "BitchBetterHaveMyMoney"
