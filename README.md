@@ -1,3 +1,8 @@
+# Introduction
+1.This is the branch where you can fully customize your splunk user and base folder
+2. It probably won't be maintained anymore, switching to a packer + terraform mode if you want to build a cluster with no access to the internet to download the package from S3
+
+
 # Terraform-Splunk
 1. Creates a poliy/role/instance profile to be able to download your splunk package from a specified s3 bucket/path
 2. Creates an ELB pointing out to the elb search heads
