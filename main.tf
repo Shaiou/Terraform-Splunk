@@ -9,9 +9,9 @@ resource "aws_elb" "search" {
     tags {
         Name = "splunk_elb"
     }
+    internal        = "${var.elb_internal}"
     subnets         = ["${split(",", var.subnets)}"]
     security_groups = ["${aws_security_group.elb.id}"]
-    instances       = ["${aws_instance.searchhead.*.id}"]
     listener {
         instance_port     = "${var.httpport}"
         instance_protocol = "http"
@@ -125,6 +125,13 @@ resource "aws_security_group" "searchhead" {
 }
 
 ###################### Templates part ######################
+resource "template_file" "bashrc" {
+    template    = "${file("${path.module}/bashrc.tpl")}"
+    vars     {
+        splunkdir        = "${var.basedir}/splunk"
+    }
+}
+
 resource "template_file" "web_conf" {
     template    = "${file("${path.module}/web_conf.tpl")}"
     vars     {
@@ -146,8 +153,10 @@ resource "template_file" "user_data_template" {
     vars    {
         user              = "${var.user}"
         group             = "${var.group}"
+        bashrc_content    = "${template_file.bashrc.rendered}"
         region            = "${var.region}"
         s3_url            = "s3://${var.s3_bucket}/${var.s3_path}/${var.package}"
+        package_manager   = "${var.package_manager}"
         package           = "${var.package}"
         basedir           = "${var.basedir}"
         splunk_dir        = "${var.basedir}/splunk"
@@ -186,7 +195,12 @@ resource "template_file" "server_conf_searchhead" {
 resource "template_file" "user_data_master" {
     template    = "${template_file.user_data_template.rendered}"
     vars    {
-        deploymentclient_conf_content   = "${template_file.deploymentclient_conf.rendered}"
+        deploymentclient_conf_content   = <<EOF
+[deployment-client]
+serverRepositoryLocationPolicy = rejectAlways
+repositoryLocation = \$SPLUNK_HOME/etc/master-apps
+${template_file.deploymentclient_conf.rendered}
+EOF
         server_conf_content             = "${template_file.server_conf_master.rendered}"
         role                            = "master"
     }
@@ -307,21 +321,36 @@ resource "aws_instance" "deploymentserver" {
     user_data                   = "${template_file.user_data_deploymentserver.rendered}"
 }
 
-resource "aws_instance" "searchhead" {
+###################### searchhead autoscaling part ######################
+resource "aws_launch_configuration" "searchhead" {
+    name = "lc_splunk_searchhead"
     connection {
         user = "${var.instance_user}"
     }
-    count                       = "${var.count_searchhead}"
-    tags {
-        Name = "splunk_searchhead_${count.index}"
-    }
-    ami                         = "${var.ami}"
+    image_id                    = "${var.ami}"
     instance_type               = "${var.instance_type_searchhead}"
     key_name                    = "${var.key_name}"
-    subnet_id                   = "${element(split(",",var.subnets), count.index)}"
-    vpc_security_group_ids      = ["${aws_security_group.all.id}", "${aws_security_group.searchhead.id}"]
+    security_groups             = ["${aws_security_group.all.id}", "${aws_security_group.searchhead.id}"]
     iam_instance_profile        = "${aws_iam_instance_profile.splunk.name}"
     user_data                   = "${template_file.user_data_searchhead.rendered}"
+}
+
+resource "aws_autoscaling_group" "searchhead" {
+    name = "asg_splunk_searchhead"
+    availability_zones         = ["${split(",", var.availability_zones)}"]
+    vpc_zone_identifier        = ["${split(",", var.subnets)}"]
+    min_size                   = "${var.asg_searchhead_min}"
+    max_size                   = "${var.asg_searchhead_max}"
+    desired_capacity           = "${var.asg_searchhead_desired}"
+    health_check_grace_period  = 300
+    health_check_type          = "EC2"
+    launch_configuration       = "${aws_launch_configuration.searchhead.name}"
+    load_balancers             = ["${aws_elb.search.name}"]
+    tag {
+        key                 = "Name"
+        value               = "splunk_searchhead"
+        propagate_at_launch = true
+    }
 }
 
 ###################### Indexer autoscaling part ######################
@@ -357,3 +386,31 @@ resource "aws_autoscaling_group" "indexer" {
         propagate_at_launch = true
     }
 }
+
+###################### ServerClass output part ######################
+resource "template_file" "serverclass" {
+    template    = "${file("${path.module}/serverclass_conf.tpl")}"
+    vars     {
+        master_ip = "${aws_instance.master.private_ip}"
+    }
+}
+
+output "serverclass" {
+    value = <<EOF
+
+# Please copy paste the following  in the $SPLUNK_HOME/etc/system/local/serverclass.conf of the Deployment Server
+
+${template_file.serverclass.rendered}
+
+#Also add the following to the file
+[serverClass:sc_searchhead]
+whitelist.O = <ip of first search head>
+whitelist.1 = <ip of second search head>
+...
+
+#Then restart the splunk on the Deployment Server
+${var.basedir}/splunk/bin/splunk restart
+
+EOF
+}
+

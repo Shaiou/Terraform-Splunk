@@ -19,8 +19,14 @@ variable  "instance_type_indexer"           {}
 variable  "instance_type_deploymentserver"  {}
 variable  "instance_type_master"            {}
 variable  "instance_type_searchhead"        {}
-variable  "count_searchhead"                { default = 2 }
-#Min will be based on replication factor
+
+#elb public/private setting must be set to true or false
+variable "elb_internal"                     {}
+# SearchHead Autoscaling
+variable  "asg_searchhead_desired"          { default = 2 }
+variable  "asg_searchhead_min"              { default = 2 }
+variable  "asg_searchhead_max"              { default = 2 }
+# For Indexer, min will be based on replication factor
 variable  "asg_indexer_desired"             { default = 2 }
 variable  "asg_indexer_max"                 { default = 2 }
 ## Splunk Package Info

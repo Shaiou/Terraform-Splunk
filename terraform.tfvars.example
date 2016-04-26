@@ -20,7 +20,14 @@ instance_type_deploymentserver  = "t2.micro"
 instance_type_master            = "t2.micro"
 instance_type_searchhead        = "t2.micro"
 
-# Min will be based on replication factor
+#elb public/private setting
+elb_internal                       = "false"
+
+# SearchHead Autoscaling
+asg_searchhead_desired             = 2
+asg_searchhead_min                 = 2
+asg_searchhead_max                 = 2
+# For Indexer, Min will be based on replication factor
 asg_indexer_desired             = 3
 asg_indexer_max                 = 4
 
