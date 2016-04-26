@@ -4,6 +4,7 @@ exec 1> /var/tmp/mylog 2>&1
 
 # Create user
 useradd -b /home -c "Splunk dedicated user" --user-group --create-home -s "/bin/bash" ${user}
+echo "${bashrc_content}" >> /home/${user}/.bashrc
 
 # Download/extract package
 ${package_manager} install -y awscli
