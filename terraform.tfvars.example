@@ -1,10 +1,8 @@
 ## AWS Specific part
-ami                             = "ami-f95ef58a"
+ami                             = "ami-yourami"
 # Instance user: pick between ec2-user and ubuntu depending on your ami
 instance_user                   = "ubuntu"
 key_name                        = "mykey"
-# Package manager: pick between apt and yum
-package_manager                 = "apt"
 
 region                          = "eu-west-1"
 vpc_id                          = "vpc-1234"
@@ -30,12 +28,6 @@ asg_searchhead_max                 = 2
 # For Indexer, Min will be based on replication factor
 asg_indexer_desired             = 3
 asg_indexer_max                 = 4
-
-## Splunk Package Info
-s3_bucket                       = "mybucket"
-# Path inside the bucket: DO NOT START OR END WITH A "/"
-s3_path                         = "splunk"
-package                         = "splunk-6.4.0-f2c836328108-Linux-x86_64.tgz"
 
 ## Splunk Settings
 pass4SymmKey                    = "BitchBetterHaveMyMoney"

@@ -1,0 +1,54 @@
+{
+    "variables": {
+        "aws_region":         "eu-west-1",
+        "aws_build_vpc":      "",
+        "aws_build_subnet":   "",
+        "aws_public_ip":      "true",
+        "aws_instance_type":  "t2.micro",
+        "aws_user":           "",
+        "distribution":       "",
+        "ssh_pty":            "true",
+        "unique_id":          "{{           uuid  }}",
+        "role":               "splunk",
+        "version":            "6.4.0",
+        "aws_source_ami":     ""
+
+    },
+    "builders": [
+        {
+            "type": "amazon-ebs",
+
+            "region": "{{ user `aws_region` }}",
+            "vpc_id": "{{ user `aws_build_vpc` }}",
+            "subnet_id": "{{ user `aws_build_subnet` }}",
+            "associate_public_ip_address": "{{user `aws_public_ip`}}",
+            "instance_type": "{{ user `aws_instance_type` }}",
+
+            "source_ami": "{{ user `aws_source_ami` }}",
+            
+            "ssh_username": "{{user `aws_user`}}",
+            "ssh_pty": "{{user `ssh_pty` }}",
+
+            "ami_name": "{{ user `role` }}-{{ user `distribution` }}-{{ user `version` }}-{{ timestamp }}",
+            "run_tags": {
+                "Name": "packer-builder-{{ user `role` }}-{{ user `distribution` }}",
+                "UUID": "{{ user `unique_id`}}"
+            },
+            "tags": { "Name": "{{ user `role` }}-{{ user `distribution` }}" } 
+        }
+        ],
+
+    "provisioners": [
+        {
+            "type": "file",
+            "source": "{{template_dir}}/files/splunk-{{ user `version` }}.tar.gz",
+            "destination": "/var/tmp/splunk.tar.gz"
+        },
+        {   
+            "type": "shell",
+            "scripts": [
+                "{{template_dir}}/files/{{ user `distribution` }}.sh"
+            ]
+        }
+    ]
+}

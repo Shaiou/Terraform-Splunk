@@ -2,7 +2,6 @@
 variable  "ami"                             {}
 variable  "instance_user"                   {}
 variable  "key_name"                        {}
-variable  "package_manager"                 {}
 
 variable  "region"                          {}
 variable  "pretty_name"                     { default = "splunk" }
@@ -29,11 +28,7 @@ variable  "asg_searchhead_max"              { default = 2 }
 # For Indexer, min will be based on replication factor
 variable  "asg_indexer_desired"             { default = 2 }
 variable  "asg_indexer_max"                 { default = 2 }
-## Splunk Package Info
-variable  "s3_bucket"                       {}
-variable  "s3_path"                         { default = "splunk" }
-variable  "package"                         {}
-variable  "basedir"                         { default = "/opt" }
+
 ## Splunk Settings
 variable  "httpport"                        { default = 8000 }
 variable  "indexer_volume_size"             { default = "50" }
@@ -42,5 +37,3 @@ variable  "pass4SymmKey"                    {}
 variable  "replication_factor"              { default = 2 }
 variable  "replication_port"                { default = 9887 }
 variable  "search_factor"                   { default = 2 }
-variable  "user"                            { default = "splunk" }
-variable  "group"                           { default = "splunk" }

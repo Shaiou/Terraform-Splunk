@@ -125,13 +125,6 @@ resource "aws_security_group" "searchhead" {
 }
 
 ###################### Templates part ######################
-resource "template_file" "bashrc" {
-    template    = "${file("${path.module}/bashrc.tpl")}"
-    vars     {
-        splunkdir        = "${var.basedir}/splunk"
-    }
-}
-
 resource "template_file" "web_conf" {
     template    = "${file("${path.module}/web_conf.tpl")}"
     vars     {
@@ -145,22 +138,6 @@ resource "template_file" "deploymentclient_conf" {
     vars     {
         mgmtHostPort        = "${var.mgmtHostPort}"
         deploymentserver_ip = "${aws_instance.deploymentserver.private_ip}"
-    }
-}
-
-resource "template_file" "user_data_template" {
-    template    = "${file("${path.module}/user_data.tpl")}"
-    vars    {
-        user              = "${var.user}"
-        group             = "${var.group}"
-        bashrc_content    = "${template_file.bashrc.rendered}"
-        region            = "${var.region}"
-        s3_url            = "s3://${var.s3_bucket}/${var.s3_path}/${var.package}"
-        package_manager   = "${var.package_manager}"
-        package           = "${var.package}"
-        basedir           = "${var.basedir}"
-        splunk_dir        = "${var.basedir}/splunk"
-        web_conf_content  = "${template_file.web_conf.rendered}"
     }
 }
 
@@ -193,7 +170,7 @@ resource "template_file" "server_conf_searchhead" {
 }
 
 resource "template_file" "user_data_master" {
-    template    = "${template_file.user_data_template.rendered}"
+    template    = "${file("${path.module}/user_data.tpl")}"
     vars    {
         deploymentclient_conf_content   = <<EOF
 [deployment-client]
@@ -202,92 +179,43 @@ repositoryLocation = \$SPLUNK_HOME/etc/master-apps
 ${template_file.deploymentclient_conf.rendered}
 EOF
         server_conf_content             = "${template_file.server_conf_master.rendered}"
+        web_conf_content                = "${template_file.web_conf.rendered}"
         role                            = "master"
     }
 }
 
 resource "template_file" "user_data_deploymentserver" {
-    template    = "${template_file.user_data_template.rendered}"
+    template    = "${file("${path.module}/user_data.tpl")}"
     vars    {
         # Deployment server cannot be it's own client
         deploymentclient_conf_content   = ""
         server_conf_content             = ""
+        web_conf_content                = "${template_file.web_conf.rendered}"
         role                            = "deploymentserver"
     }
 }
 
 resource "template_file" "user_data_indexer" {
-    template    = "${template_file.user_data_template.rendered}"
+    template    = "${file("${path.module}/user_data.tpl")}"
     vars    {
         # Indexers are deploy clients for the cluster master
         deploymentclient_conf_content   = ""
         server_conf_content             = "${template_file.server_conf_indexer.rendered}"
+        web_conf_content                = "${template_file.web_conf.rendered}"
         role                            = "indexer"
     }
 }
 
 resource "template_file" "user_data_searchhead" {
-    template    = "${template_file.user_data_template.rendered}"
+    template    = "${file("${path.module}/user_data.tpl")}"
     vars    {
         deploymentclient_conf_content   = "${template_file.deploymentclient_conf.rendered}"
         server_conf_content             = "${template_file.server_conf_searchhead.rendered}"
+        web_conf_content                = "${template_file.web_conf.rendered}"
         role                            = "searchhead"
     }
 }
 
-###################### IAM/ROLE part ######################
-resource "aws_iam_policy" "splunk" {
-    name = "policy_${var.pretty_name}"
-    description = "Policy for EC2 instances to access splunk s3 folder"
-    policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": "s3:ListBucket",
-            "Resource": "arn:aws:s3:::${var.s3_bucket}*"
-        },
-        {
-            "Effect": "Allow",
-            "Action": "s3:*",
-            "Resource": [
-                "arn:aws:s3:::${var.s3_bucket}/${var.s3_path}/*"
-            ]
-        }
-    ]
-}
-EOF
-}
-
-resource "aws_iam_role" "splunk" {
-    name = "role_${var.pretty_name}"
-    assume_role_policy  = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Action": "sts:AssumeRole",
-            "Principal": {
-                "Service": "ec2.amazonaws.com"
-            },
-            "Effect": "Allow"
-        }
-    ]
-}
-EOF
-}
-
-resource "aws_iam_policy_attachment" "splunk" {
-    name        =  "policy_attachment_${var.pretty_name}"
-    roles       =  ["${aws_iam_role.splunk.name}"]
-    policy_arn  =  "${aws_iam_policy.splunk.arn}"
-}
-
-resource "aws_iam_instance_profile" "splunk" {
-    name    = "profile_${var.pretty_name}"
-    roles   = ["${aws_iam_role.splunk.name}"]
-}
 ###################### Instances part ######################
 resource "aws_instance" "master" {
     connection {
@@ -301,7 +229,6 @@ resource "aws_instance" "master" {
     key_name                    = "${var.key_name}"
     subnet_id                   = "${element(split(",", var.subnets), "1")}"
     vpc_security_group_ids      = ["${aws_security_group.all.id}"]
-    iam_instance_profile        = "${aws_iam_instance_profile.splunk.name}"
     user_data                   = "${template_file.user_data_master.rendered}"
 }
 
@@ -317,7 +244,6 @@ resource "aws_instance" "deploymentserver" {
     key_name                    = "${var.key_name}"
     subnet_id                   = "${element(split(",", var.subnets), "1")}"
     vpc_security_group_ids      = ["${aws_security_group.all.id}"]
-    iam_instance_profile        = "${aws_iam_instance_profile.splunk.name}"
     user_data                   = "${template_file.user_data_deploymentserver.rendered}"
 }
 
@@ -331,7 +257,6 @@ resource "aws_launch_configuration" "searchhead" {
     instance_type               = "${var.instance_type_searchhead}"
     key_name                    = "${var.key_name}"
     security_groups             = ["${aws_security_group.all.id}", "${aws_security_group.searchhead.id}"]
-    iam_instance_profile        = "${aws_iam_instance_profile.splunk.name}"
     user_data                   = "${template_file.user_data_searchhead.rendered}"
 }
 
@@ -363,7 +288,6 @@ resource "aws_launch_configuration" "indexer" {
     instance_type               = "${var.instance_type_indexer}"
     key_name                    = "${var.key_name}"
     security_groups             = ["${aws_security_group.all.id}"]
-    iam_instance_profile        = "${aws_iam_instance_profile.splunk.name}"
     user_data                   = "${template_file.user_data_indexer.rendered}"
     root_block_device = {
         volume_size = "${var.indexer_volume_size}"
@@ -398,18 +322,12 @@ resource "template_file" "serverclass" {
 output "serverclass" {
     value = <<EOF
 
-# Please copy paste the following  in the $SPLUNK_HOME/etc/system/local/serverclass.conf of the Deployment Server
+# Please copy paste the following  in the /opt/splunk/etc/system/local/serverclass.conf of the Deployment Server
 
 ${template_file.serverclass.rendered}
 
-#Also add the following to the file
-[serverClass:sc_searchhead]
-whitelist.O = <ip of first search head>
-whitelist.1 = <ip of second search head>
-...
-
 #Then restart the splunk on the Deployment Server
-${var.basedir}/splunk/bin/splunk restart
+/opt/splunk/bin/splunk restart
 
 EOF
 }

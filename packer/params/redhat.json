@@ -1,0 +1,5 @@
+{
+    "aws_source_ami":    "ami-8b8c57f8",
+    "aws_user":          "ec2-user",
+    "distribution":      "amazon"
+}

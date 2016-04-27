@@ -2,28 +2,17 @@
 set -x
 exec 1> /var/tmp/mylog 2>&1
 
-# Create user
-useradd -b /home -c "Splunk dedicated user" --user-group --create-home -s "/bin/bash" ${user}
-echo "${bashrc_content}" >> /home/${user}/.bashrc
-
-# Download/extract package
-${package_manager} install -y awscli
-aws s3 cp ${s3_url} /tmp --region ${region}
-cd ${basedir}
-tar -zxvf /tmp/${package}
-
 # Create local config files
-mkdir -p ${splunk_dir}/etc/system/local
-echo "${web_conf_content}" > ${splunk_dir}/etc/system/local/web.conf
-echo "$${server_conf_content}" > ${splunk_dir}/etc/system/local/server.conf
-echo "$${deploymentclient_conf_content}" > ${splunk_dir}/etc/system/local/deploymentclient.conf
-chown -R ${user}:${group} ${basedir}
+sudo -u splunk mkdir -p /opt/splunk/etc/system/local
+echo "${web_conf_content}" |sudo -u splunk tee /opt/splunk/etc/system/local/web.conf
+echo "${server_conf_content}" |sudo -u splunk tee /opt/splunk/etc/system/local/server.conf
+echo "${deploymentclient_conf_content}" |sudo -u splunk tee /opt/splunk/etc/system/local/deploymentclient.conf
 
 # Update hostname
-hostname splunk-$${role}-`hostname`
+hostname splunk-${role}-`hostname`
 echo `hostname` > /etc/hostname
 sed -i 's/localhost$/localhost '`hostname`'/' /etc/hosts
 
-# Set service to autostart and then start it
-${splunk_dir}/bin/splunk enable boot-start -user ${user} --accept-license
-${splunk_dir}/bin/splunk start --accept-license
+# Start service and Enable autostart
+sudo -u splunk /opt/splunk/bin/splunk enable boot-start -user splunk --accept-license
+sudo -u splunk /opt/splunk/bin/splunk start --accept-license
