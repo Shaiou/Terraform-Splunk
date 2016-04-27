@@ -297,7 +297,7 @@ resource "aws_instance" "master" {
         Name = "splunk_master"
     }
     ami                         = "${var.ami}"
-    instance_type               = "${var.instance_type_indexer}"
+    instance_type               = "${var.instance_type_master}"
     key_name                    = "${var.key_name}"
     subnet_id                   = "${element(split(",", var.subnets), "1")}"
     vpc_security_group_ids      = ["${aws_security_group.all.id}"]
@@ -313,7 +313,7 @@ resource "aws_instance" "deploymentserver" {
         Name = "splunk_deploymentserver"
     }
     ami                         = "${var.ami}"
-    instance_type               = "${var.instance_type_indexer}"
+    instance_type               = "${var.instance_type_deploymentserver}"
     key_name                    = "${var.key_name}"
     subnet_id                   = "${element(split(",", var.subnets), "1")}"
     vpc_security_group_ids      = ["${aws_security_group.all.id}"]
