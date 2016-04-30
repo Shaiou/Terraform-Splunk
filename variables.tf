@@ -12,6 +12,8 @@ variable  "availability_zones"              {}
 variable  "subnets"                         {}
 #admin cidr for ssh and web access
 variable  "admin_cidr_block"                {}
+# Pick an address far in the subnet to make sure other hosts don't take it first on dhcp
+variable  "deploymentserver_ip"             {}
 
 ## Instance/elb/asg specs
 variable  "instance_type_indexer"           {}
@@ -25,9 +27,8 @@ variable "elb_internal"                     {}
 variable  "asg_searchhead_desired"          { default = 2 }
 variable  "asg_searchhead_min"              { default = 2 }
 variable  "asg_searchhead_max"              { default = 2 }
-# For Indexer, min will be based on replication factor
-variable  "asg_indexer_desired"             { default = 2 }
-variable  "asg_indexer_max"                 { default = 2 }
+
+variable  "count_indexer"                   { default = 2 }
 
 ## Splunk Settings
 variable  "httpport"                        { default = 8000 }

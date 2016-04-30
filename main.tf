@@ -125,6 +125,13 @@ resource "aws_security_group" "searchhead" {
 }
 
 ###################### Templates part ######################
+resource "template_file" "serverclass_conf" {
+    template    = "${file("${path.module}/serverclass_conf.tpl")}"
+    vars     {
+        master_ip        = "${aws_instance.master.private_ip}"
+    }
+}
+
 resource "template_file" "web_conf" {
     template    = "${file("${path.module}/web_conf.tpl")}"
     vars     {
@@ -137,7 +144,7 @@ resource "template_file" "deploymentclient_conf" {
     template    = "${file("${path.module}/deploymentclient_conf.tpl")}"
     vars     {
         mgmtHostPort        = "${var.mgmtHostPort}"
-        deploymentserver_ip = "${aws_instance.deploymentserver.private_ip}"
+        deploymentserver_ip = "${var.deploymentserver_ip}"
     }
 }
 
@@ -179,6 +186,7 @@ repositoryLocation = \$SPLUNK_HOME/etc/master-apps
 ${template_file.deploymentclient_conf.rendered}
 EOF
         server_conf_content             = "${template_file.server_conf_master.rendered}"
+        serverclass_conf_content        = ""
         web_conf_content                = "${template_file.web_conf.rendered}"
         role                            = "master"
     }
@@ -190,6 +198,7 @@ resource "template_file" "user_data_deploymentserver" {
         # Deployment server cannot be it's own client
         deploymentclient_conf_content   = ""
         server_conf_content             = ""
+        serverclass_conf_content        = "${template_file.serverclass_conf.rendered}"
         web_conf_content                = "${template_file.web_conf.rendered}"
         role                            = "deploymentserver"
     }
@@ -201,6 +210,7 @@ resource "template_file" "user_data_indexer" {
         # Indexers are deploy clients for the cluster master
         deploymentclient_conf_content   = ""
         server_conf_content             = "${template_file.server_conf_indexer.rendered}"
+        serverclass_conf_content        = ""
         web_conf_content                = "${template_file.web_conf.rendered}"
         role                            = "indexer"
     }
@@ -211,6 +221,7 @@ resource "template_file" "user_data_searchhead" {
     vars    {
         deploymentclient_conf_content   = "${template_file.deploymentclient_conf.rendered}"
         server_conf_content             = "${template_file.server_conf_searchhead.rendered}"
+        serverclass_conf_content        = ""
         web_conf_content                = "${template_file.web_conf.rendered}"
         role                            = "searchhead"
     }
@@ -227,9 +238,9 @@ resource "aws_instance" "master" {
     ami                         = "${var.ami}"
     instance_type               = "${var.instance_type_indexer}"
     key_name                    = "${var.key_name}"
-    subnet_id                   = "${element(split(",", var.subnets), "1")}"
-    vpc_security_group_ids      = ["${aws_security_group.all.id}"]
+    subnet_id                   = "${element(split(",", var.subnets), "0")}"
     user_data                   = "${template_file.user_data_master.rendered}"
+    vpc_security_group_ids      = ["${aws_security_group.all.id}"]
 }
 
 resource "aws_instance" "deploymentserver" {
@@ -242,11 +253,27 @@ resource "aws_instance" "deploymentserver" {
     ami                         = "${var.ami}"
     instance_type               = "${var.instance_type_indexer}"
     key_name                    = "${var.key_name}"
-    subnet_id                   = "${element(split(",", var.subnets), "1")}"
-    vpc_security_group_ids      = ["${aws_security_group.all.id}"]
+    private_ip                  = "${var.deploymentserver_ip}"
+    subnet_id                   = "${element(split(",", var.subnets), "0")}"
     user_data                   = "${template_file.user_data_deploymentserver.rendered}"
+    vpc_security_group_ids      = ["${aws_security_group.all.id}"]
 }
 
+resource "aws_instance" "indexer" {
+    count                       = "${var.count_indexer}"
+    connection {
+        user = "${var.instance_user}"
+    }
+    tags {
+        Name = "splunk_indexer"
+    }
+    ami                         = "${var.ami}"
+    instance_type               = "${var.instance_type_indexer}"
+    key_name                    = "${var.key_name}"
+    subnet_id                   = "${element(split(",", var.subnets), count.index)}"
+    user_data                   = "${template_file.user_data_indexer.rendered}"
+    vpc_security_group_ids      = ["${aws_security_group.all.id}"]
+}
 ###################### searchhead autoscaling part ######################
 resource "aws_launch_configuration" "searchhead" {
     name = "lc_splunk_searchhead"
@@ -256,8 +283,8 @@ resource "aws_launch_configuration" "searchhead" {
     image_id                    = "${var.ami}"
     instance_type               = "${var.instance_type_searchhead}"
     key_name                    = "${var.key_name}"
-    security_groups             = ["${aws_security_group.all.id}", "${aws_security_group.searchhead.id}"]
     user_data                   = "${template_file.user_data_searchhead.rendered}"
+    security_groups             = ["${aws_security_group.all.id}", "${aws_security_group.searchhead.id}"]
 }
 
 resource "aws_autoscaling_group" "searchhead" {
@@ -277,58 +304,3 @@ resource "aws_autoscaling_group" "searchhead" {
         propagate_at_launch = true
     }
 }
-
-###################### Indexer autoscaling part ######################
-resource "aws_launch_configuration" "indexer" {
-    name = "lc_splunk_indexer"
-    connection {
-        user = "${var.instance_user}"
-    }
-    image_id                    = "${var.ami}"
-    instance_type               = "${var.instance_type_indexer}"
-    key_name                    = "${var.key_name}"
-    security_groups             = ["${aws_security_group.all.id}"]
-    user_data                   = "${template_file.user_data_indexer.rendered}"
-    root_block_device = {
-        volume_size = "${var.indexer_volume_size}"
-    }
-}
-
-resource "aws_autoscaling_group" "indexer" {
-    name = "asg_splunk_indexer"
-    availability_zones         = ["${split(",", var.availability_zones)}"]
-    vpc_zone_identifier        = ["${split(",", var.subnets)}"]
-    max_size                   = "${var.asg_indexer_max}"
-    min_size                   = "${var.replication_factor}"
-    desired_capacity           = "${var.asg_indexer_desired}"
-    health_check_grace_period  = 300
-    health_check_type          = "EC2"
-    launch_configuration       = "${aws_launch_configuration.indexer.name}"
-    tag {
-        key                 = "Name"
-        value               = "splunk_indexer"
-        propagate_at_launch = true
-    }
-}
-
-###################### ServerClass output part ######################
-resource "template_file" "serverclass" {
-    template    = "${file("${path.module}/serverclass_conf.tpl")}"
-    vars     {
-        master_ip = "${aws_instance.master.private_ip}"
-    }
-}
-
-output "serverclass" {
-    value = <<EOF
-
-# Please copy paste the following  in the /opt/splunk/etc/system/local/serverclass.conf of the Deployment Server
-
-${template_file.serverclass.rendered}
-
-#Then restart the splunk on the Deployment Server
-/opt/splunk/bin/splunk restart
-
-EOF
-}
-

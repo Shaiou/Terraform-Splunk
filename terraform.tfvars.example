@@ -11,6 +11,7 @@ availability_zones              = "eu-west-1a,eu-west-1b,eu-west-1c"
 subnets                         = "subnet-45,subnet-56,subnet-67"
 #admin cidr for ssh and web access
 admin_cidr_block                = "8.8.8.8/32"
+deploymentserver_ip             = "10.10.10.200"
 
 ## Instance/elb/asg specs
 instance_type_indexer           = "t2.micro"
@@ -19,15 +20,14 @@ instance_type_master            = "t2.micro"
 instance_type_searchhead        = "t2.micro"
 
 #elb public/private setting
-elb_internal                       = "false"
+elb_internal                    = "false"
 
 # SearchHead Autoscaling
-asg_searchhead_desired             = 2
-asg_searchhead_min                 = 2
-asg_searchhead_max                 = 2
-# For Indexer, Min will be based on replication factor
-asg_indexer_desired             = 3
-asg_indexer_max                 = 4
+asg_searchhead_desired          = 2
+asg_searchhead_min              = 2
+asg_searchhead_max              = 2
+
+count_indexer                   = 2
 
 ## Splunk Settings
 pass4SymmKey                    = "BitchBetterHaveMyMoney"

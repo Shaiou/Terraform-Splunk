@@ -4,9 +4,18 @@ exec 1> /var/tmp/mylog 2>&1
 
 # Create local config files
 sudo -u splunk mkdir -p /opt/splunk/etc/system/local
-echo "${web_conf_content}" |sudo -u splunk tee /opt/splunk/etc/system/local/web.conf
-echo "${server_conf_content}" |sudo -u splunk tee /opt/splunk/etc/system/local/server.conf
-echo "${deploymentclient_conf_content}" |sudo -u splunk tee /opt/splunk/etc/system/local/deploymentclient.conf
+cat <<EOF | sudo -u splunk tee /opt/splunk/etc/system/local/deploymentclient.conf
+${deploymentclient_conf_content}
+EOF
+cat <<EOF | sudo -u splunk tee /opt/splunk/etc/system/local/web.conf
+${web_conf_content}
+EOF
+cat <<EOF | sudo -u splunk tee /opt/splunk/etc/system/local/server.conf
+${server_conf_content}
+EOF
+cat <<EOF | sudo -u splunk tee /opt/splunk/etc/system/local/serverclass.conf
+${serverclass_conf_content}
+EOF
 
 # Update hostname
 hostname splunk-${role}-`hostname`
