@@ -1,4 +1,4 @@
-#Introduction
+# Introduction
  - New version with packer for servers that don't have internet access to download package from S3.
  - In the packer vars, user is set to splunk and base folder to /opt
  - Check the packer/README.md to build your image and then use this ami in your terraform.tfvars variable
@@ -18,6 +18,6 @@
  - TCP 80 from anywhere to ELB
  - TCP port custom from  ELB to search heads
 
-#TODO:
+# TODO:
  - Add licence server
  - A lot of stuff
